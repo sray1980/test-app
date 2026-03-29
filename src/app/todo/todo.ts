@@ -1,10 +1,7 @@
-//import { Component } from '@angular/core';
 import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { NgClass, JsonPipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { TodoModel } from '../model/todoModel';
-
-const BASE_API = 'https://json-server-vercel-for-tutorials.vercel.app';
+import { TodoService } from './todo.service';
 
 @Component({
   selector: 'app-todo',
@@ -13,7 +10,7 @@ const BASE_API = 'https://json-server-vercel-for-tutorials.vercel.app';
   styleUrl: './todo.css',
 })
 export class Todo {
-  http = inject(HttpClient);
+  todoService = inject(TodoService);
   todos = signal<TodoModel[]>([]);
   error = signal(false);
 
@@ -24,7 +21,7 @@ export class Todo {
   totalTodos = computed(() => this.todos().filter((t) => !t.completed).length);
 
   ngOnInit() {
-    this.http.get<TodoModel[]>(`${BASE_API}/todos`).subscribe({
+    this.todoService.getTodos().subscribe({
       next: (res) => {
         this.todos.set(res);
       },
@@ -36,12 +33,15 @@ export class Todo {
   }
 
   addTodo(input: HTMLInputElement) {
-    this.error.set(false);
-    this.http
-      .post<TodoModel>(`${BASE_API}/todos`, {
-        title: input.value,
-        completed: false,
-      })
+    this.error.set(false); 
+
+    let todoObj: TodoModel = {
+      id: -1,
+      title: input.value,
+      completed: false
+    };
+
+    this.todoService.addTodo(todoObj)
       .subscribe({
         next: (newTodo) => {
           this.todos.update((todos) => [...todos, newTodo]);
@@ -55,7 +55,7 @@ export class Todo {
 
   removeTodo(todoToRemove: TodoModel) {
     this.error.set(false);
-    this.http.delete(`${BASE_API}/todos/${todoToRemove.id}`).subscribe({
+    this.todoService.removeTodo(todoToRemove).subscribe({
       next: () => {
         this.todos.update((todos) =>
           todos.filter((todo) => todo.id !== todoToRemove.id)
@@ -69,10 +69,8 @@ export class Todo {
 
   toggleTodo(todoToToggle: TodoModel) {
     this.error.set(false);
-    this.http
-      .patch<TodoModel>(`${BASE_API}/todos/${todoToToggle.id}`, {
-        completed: !todoToToggle.completed,
-      })
+    this.todoService
+      .toggleTodo(todoToToggle)
       .subscribe({
         next: (res) => {
           this.todos.update((todos) => {
